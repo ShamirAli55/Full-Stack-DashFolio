@@ -1,0 +1,17 @@
+.heading
+{
+    font-size: larger;
+    padding:20px 0;
+    padding-bottom: 10px;
+}
+.para
+{
+    font-size: smaller;
+    padding: 10px 5vw 0 0;
+}
+.list
+{
+    font-size:small;
+    padding: 10px;
+    list-style-type: "-";
+}
