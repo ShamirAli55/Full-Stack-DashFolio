@@ -10,6 +10,13 @@ async function getData() {
     }
     return res.json();
 }
+
+
+export const metadata = {
+    title: "Shamir Dev Blog",
+    description: "It is a blog website for web development and programming",
+}
+
 export default async function Blog() {
     const data = await getData();
     return (
