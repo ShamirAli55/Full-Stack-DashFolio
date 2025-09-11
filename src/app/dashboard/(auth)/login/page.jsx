@@ -1,39 +1,49 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import styles from "./page.module.css";
-import { getProviders, signIn, useSession } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 const Login = ({ url }) => {
-  const session = useSession();
+  const { status } = useSession();
   const router = useRouter();
   const params = useSearchParams();
+
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
   useEffect(() => {
-    setError(params.get("error"));
-    setSuccess(params.get("success"));
+    if (params.get("error")) setError(params.get("error"));
+    if (params.get("success")) setSuccess(params.get("success"));
   }, [params]);
 
-  if (session.status === "loading") {
+  if (status === "loading") {
     return <p>Loading...</p>;
   }
 
-  if (session.status === "authenticated") {
-    router?.push("/dashboard");
+  if (status === "authenticated") {
+    router.push("/dashboard");
+    return null;
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const email = e.target[0].value;
     const password = e.target[1].value;
 
-    signIn("credentials", {
+    const result = await signIn("credentials", {
       email,
       password,
+      redirect: false, // prevent auto redirect
     });
+
+    if (result?.error) {
+      setError("Invalid email or password");
+    } else {
+      setError("");
+      router.push("/dashboard"); // manual redirect
+    }
   };
 
   return (
@@ -55,28 +65,21 @@ const Login = ({ url }) => {
           className={styles.input}
         />
         <button className={styles.button}>Login</button>
-        {error && error}
+        {error && <p className={styles.error}>{error}</p>}
       </form>
+
       <button
-        onClick={() => {
-          signIn("google");
-        }}
+        onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
         className={styles.button + " " + styles.google}
       >
         Login with Google
       </button>
+
       <span className={styles.or}>- OR -</span>
+
       <Link className={styles.link} href="/dashboard/register">
         Create new account
       </Link>
-      {/* <button
-        onClick={() => {
-          signIn("github");
-        }}
-        className={styles.button + " " + styles.github}
-      >
-        Login with Github
-      </button> */}
     </div>
   );
 };

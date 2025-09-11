@@ -1,5 +1,5 @@
 "use client";
-import React, { useEffect, useState } from "react";
+import React, { useEffect } from "react";
 import styles from "./page.module.css";
 import useSWR from "swr";
 import { useSession } from "next-auth/react";
@@ -7,51 +7,24 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 const Dashboard = () => {
-
-  //OLD WAY TO FETCH DATA
-
-  // const [data, setData] = useState([]);
-  // const [err, setErr] = useState(false);
-  // const [isLoading, setIsLoading] = useState(false);
-
-  // useEffect(() => {
-  //   const getData = async () => {
-  //     setIsLoading(true);
-  //     const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
-  //       cache: "no-store",
-  //     });
-
-  //     if (!res.ok) {
-  //       setErr(true);
-  //     }
-
-  //     const data = await res.json()
-
-  //     setData(data);
-  //     setIsLoading(false);
-  //   };
-  //   getData()
-  // }, []);
-
-  const session = useSession();
-
+  const { status, data: sessionData } = useSession();
   const router = useRouter();
-  
-  //NEW WAY TO FETCH DATA
+
+  // Safe fetcher
   const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
+  // Only fetch when user is available
   const { data, mutate, error, isLoading } = useSWR(
-    `/api/posts?username=${session?.data?.user.name}`,
+    sessionData?.user?.name ? `/api/posts?username=${sessionData.user.name}` : null,
     fetcher
   );
 
-  if (session.status === "loading") {
-    return <p>Loading...</p>;
-  }
-
-  if (session.status === "unauthenticated") {
-    router?.push("/dashboard/login");
-  }
+  // Handle unauthenticated redirect
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/dashboard/login");
+    }
+  }, [status, router]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,18 +36,19 @@ const Dashboard = () => {
     try {
       await fetch("/api/posts", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
           desc,
           img,
           content,
-          username: session.data.user.name,
+          username: sessionData.user.name,
         }),
       });
       mutate();
-      e.target.reset()
+      e.target.reset();
     } catch (err) {
-      console.log(err);
+      console.log("Error creating post:", err);
     }
   };
 
@@ -85,36 +59,52 @@ const Dashboard = () => {
       });
       mutate();
     } catch (err) {
-      console.log(err);
+      console.log("Error deleting post:", err);
     }
   };
 
-  if (session.status === "authenticated") {
+  if (status === "loading") {
+    return <p>Loading session...</p>;
+  }
+
+  if (status === "authenticated") {
     return (
       <div className={styles.container}>
         <div className={styles.posts}>
-          {isLoading
-            ? "loading"
-            : data?.map((post) => (
-                <div className={styles.post} key={post._id}>
-                  <div className={styles.imgContainer}>
-                    <Image src={post.img} alt="" width={200} height={100} />
-                  </div>
-                  <h2 className={styles.postTitle}>{post.title}</h2>
-                  <span
-                    className={styles.delete}
-                    onClick={() => handleDelete(post._id)}
-                  >
-                    X
-                  </span>
+          {isLoading && <p>Loading posts...</p>}
+          {error && <p className={styles.error}>Failed to load posts</p>}
+          {!isLoading &&
+            !error &&
+            data?.map((post) => (
+              <div className={styles.post} key={post._id}>
+                <div className={styles.imgContainer}>
+                  {post.img ? (
+                    <Image
+                      src={post.img}
+                      alt={post.title}
+                      width={200}
+                      height={100}
+                    />
+                  ) : (
+                    <div className={styles.noImage}>No Image</div>
+                  )}
                 </div>
-              ))}
+                <h2 className={styles.postTitle}>{post.title}</h2>
+                <span
+                  className={styles.delete}
+                  onClick={() => handleDelete(post._id)}
+                >
+                  X
+                </span>
+              </div>
+            ))}
         </div>
+
         <form className={styles.new} onSubmit={handleSubmit}>
           <h1>Add New Post</h1>
           <input type="text" placeholder="Title" className={styles.input} />
           <input type="text" placeholder="Desc" className={styles.input} />
-          <input type="text" placeholder="Image" className={styles.input} />
+          <input type="text" placeholder="Image URL" className={styles.input} />
           <textarea
             placeholder="Content"
             className={styles.textArea}
@@ -126,6 +116,8 @@ const Dashboard = () => {
       </div>
     );
   }
+
+  return null; // avoids flicker
 };
 
 export default Dashboard;
