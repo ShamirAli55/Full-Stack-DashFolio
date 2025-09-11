@@ -1,27 +1,31 @@
 import Image from "next/image";
 import Link from "next/link";
-async function getData() 
-{
-    const res = await fetch("https://jsonplaceholder.typicode.com/posts");
-    return res.json();    
+async function getData() {
+    const res = await fetch("http://localhost:3001/api/posts", {
+        cache: "no-cache"
+    });
+
+    if (!res.ok) {
+        throw new Error("Failed to fetch data");
+    }
+    return res.json();
 }
-export default async function Blog() 
-{
+export default async function Blog() {
     const data = await getData();
     return (
-        <div className="flex flex-col gap-10 min-h-screen py-8 justify-between">
-        {data.map((item) => (
-            <Link key={item.id} href={"/blog/1"} className="flex bg-amber-300 w-full h-fit px-6 justify-between gap-x-5">
-                <div className="relative min-w-[350px] h-[200px]">
-                    <Image
-                        src={"https://images.unsplash.com/photo-1709484545569-7df62b42e1fe?q=80&w=1074&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"} alt="image" fill className="object-cover w-full h-full relative" />
-                </div>
-                <div className="px-14 py-8 text-black">
-                    <h1>{item.title}</h1>
-                    <h3>{item.body}</h3>
-                </div>
-            </Link>
-        ))}
+        <div className="flex flex-col gap-10 min-h-1/2 py-8 justify-between">
+            {data.map((item) => (
+                <Link key={item._id} href={item._id} className="flex bg-amber-300 w-full h-fit px-6  gap-x-5 py-4">
+                    <div className="relative min-h-[200px] w-1/3 ">
+                        <Image
+                            src={item.img} alt="image" fill className="object-cover aspect-square w-full h-full  rounded-lg" />
+                    </div>
+                    <div className="px-14 py-8 text-black">
+                        <h1 className="text-4xl">{item.title}</h1>
+                        <h3 className="text-xl py-3">{item.desc}</h3>
+                    </div>
+                </Link>
+            ))}
         </div>
     );
 }
