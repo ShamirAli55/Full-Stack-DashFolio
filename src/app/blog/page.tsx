@@ -15,7 +15,7 @@ export default async function Blog() {
     return (
         <div className="flex flex-col gap-10 min-h-1/2 py-8 justify-between">
             {data.map((item) => (
-                <Link key={item._id} href={item._id} className="flex bg-amber-300 w-full h-fit px-6  gap-x-5 py-4">
+                <Link key={item._id} href={`/blog/${item._id}`} className="flex bg-amber-300 w-full h-fit px-6  gap-x-5 py-4">
                     <div className="relative min-h-[200px] w-1/3 ">
                         <Image
                             src={item.img} alt="image" fill className="object-cover aspect-square w-full h-full  rounded-lg" />
