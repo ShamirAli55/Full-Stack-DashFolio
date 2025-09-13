@@ -1,95 +1,86 @@
 "use client";
-import React, { useEffect, useState } from "react";
+
+import React, { FormEvent } from "react";
 import styles from "./page.module.css";
 import useSWR from "swr";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-const Dashboard = () => {
+interface Post {
+  _id: string;
+  title: string;
+  desc: string;
+  img: string;
+  content: string;
+  username: string;
+}
 
-  //OLD WAY TO FETCH DATA
-
-  // const [data, setData] = useState([]);
-  // const [err, setErr] = useState(false);
-  // const [isLoading, setIsLoading] = useState(false);
-
-  // useEffect(() => {
-  //   const getData = async () => {
-  //     setIsLoading(true);
-  //     const res = await fetch("https://jsonplaceholder.typicode.com/posts", {
-  //       cache: "no-store",
-  //     });
-
-  //     if (!res.ok) {
-  //       setErr(true);
-  //     }
-
-  //     const data = await res.json()
-
-  //     setData(data);
-  //     setIsLoading(false);
-  //   };
-  //   getData()
-  // }, []);
-
-  const session = useSession();
-
+const Dashboard: React.FC = () => {
+  const { data: session, status } = useSession();
   const router = useRouter();
-  
-  //NEW WAY TO FETCH DATA
-  const fetcher = (...args) => fetch(...args).then((res) => res.json());
 
-  const { data, mutate, error, isLoading } = useSWR(
-    `/api/posts?username=${session?.data?.user.name}`,
+  const fetcher = (url: string) => fetch(url).then((res) => res.json());
+
+  const {
+    data,
+    mutate,
+    error,
+    isLoading,
+  } = useSWR<Post[]>(
+    session?.user?.name ? `/api/posts?username=${session.user.name}` : null,
     fetcher
   );
 
-  if (session.status === "loading") {
+  if (status === "loading") {
     return <p>Loading...</p>;
   }
 
-  if (session.status === "unauthenticated") {
-    router?.push("/dashboard/login");
+  if (status === "unauthenticated") {
+    router.push("/dashboard/login");
+    return null;
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const title = e.target[0].value;
-    const desc = e.target[1].value;
-    const img = e.target[2].value;
-    const content = e.target[3].value;
+
+    const form = e.currentTarget;
+    const title = (form[0] as HTMLInputElement).value;
+    const desc = (form[1] as HTMLInputElement).value;
+    const img = (form[2] as HTMLInputElement).value;
+    const content = (form[3] as HTMLTextAreaElement).value;
 
     try {
       await fetch("/api/posts", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title,
           desc,
           img,
           content,
-          username: session.data.user.name,
+          username: session?.user?.name,
         }),
       });
       mutate();
-      e.target.reset()
+      form.reset();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
-  const handleDelete = async (id) => {
+  const handleDelete = async (id: string) => {
     try {
       await fetch(`/api/posts/${id}`, {
         method: "DELETE",
       });
       mutate();
     } catch (err) {
-      console.log(err);
+      console.error(err);
     }
   };
 
-  if (session.status === "authenticated") {
+  if (status === "authenticated") {
     return (
       <div className={styles.container}>
         <div className={styles.posts}>
@@ -98,7 +89,7 @@ const Dashboard = () => {
             : data?.map((post) => (
                 <div className={styles.post} key={post._id}>
                   <div className={styles.imgContainer}>
-                    <Image src={post.img} alt="" width={200} height={100} />
+                    <Image src={post.img} alt={post.title} width={200} height={100} />
                   </div>
                   <h2 className={styles.postTitle}>{post.title}</h2>
                   <span
@@ -118,14 +109,18 @@ const Dashboard = () => {
           <textarea
             placeholder="Content"
             className={styles.textArea}
-            cols="30"
-            rows="10"
+            cols={30}
+            rows={10}
           ></textarea>
-          <button className={styles.button}>Send</button>
+          <button type="submit" className={styles.button}>
+            Send
+          </button>
         </form>
       </div>
     );
   }
+
+  return null;
 };
 
 export default Dashboard;
